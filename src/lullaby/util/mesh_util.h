@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#ifndef LULLABY_UTIL_MESH_H_
-#define LULLABY_UTIL_MESH_H_
+#ifndef LULLABY_UTIL_MESH_UTIL_H_
+#define LULLABY_UTIL_MESH_UTIL_H_
 
 #include <stdint.h>
 #include <algorithm>
@@ -24,8 +24,14 @@ limitations under the License.
 
 #include "mathfu/glsl_mappings.h"
 #include "lullaby/util/logging.h"
+#include "lullaby/util/mesh_data.h"
 
 namespace lull {
+
+using PositionDeformation = std::function<mathfu::vec3(const mathfu::vec3&)>;
+
+using VertexListDeformation =
+    std::function<void(float* data, size_t count, size_t stride_in_floats)>;
 
 // Bitmask for representing a set of quad corners.  These are named as if
 // looking down the -z axis: +x = right and +y is top.
@@ -53,9 +59,15 @@ std::vector<uint16_t> CalculateTesselatedQuadIndices(int num_verts_x,
                                                      int num_verts_y,
                                                      int corner_verts);
 
-// TODO(b/28863495) Remove this when mesh consolidation is complete.
+// TODO(b/38379841) Reduce complexity of deformations.
 void ApplyDeformation(float* vertices, size_t len, size_t stride,
-                      std::function<mathfu::vec3(const mathfu::vec3&)> deform);
+                      const PositionDeformation& deform);
+
+// Deforms |mesh| in-place by applying |deform| to each of its vertices. Fails
+// with a DFATAL if |mesh| doesn't have read+write access.
+// TODO(b/38379841) Reduce complexity of deformations.
+void ApplyDeformationToMesh(MeshData* mesh,
+                            const VertexListDeformation& deform);
 
 // Returns the number of vertices a needed for a tessellated quad.  Optionally,
 // also returns the number of interior verts in out params so that this function
@@ -291,6 +303,29 @@ std::vector<Vertex> CalculateTesselatedQuadVertices(
   return vertices;
 }
 
+// Creates an optionally rounded rect, returning the result as a MeshData with
+// read+write access.
+template <typename Vertex>
+MeshData CreateQuadMesh(float size_x, float size_y, int num_verts_x,
+                        int num_verts_y, float corner_radius, int corner_verts,
+                        CornerMask corner_mask = CornerMask::kAll) {
+  const std::vector<Vertex> vertices = CalculateTesselatedQuadVertices<Vertex>(
+      size_x, size_y, num_verts_x, num_verts_y, corner_radius, corner_verts,
+      corner_mask);
+  const std::vector<uint16_t> indices =
+      CalculateTesselatedQuadIndices(num_verts_x, num_verts_y, corner_verts);
+
+  CHECK_EQ(Vertex::kFormat.GetVertexSize(), sizeof(Vertex));
+  MeshData mesh(
+      MeshData::kTriangles, Vertex::kFormat,
+      DataContainer::CreateHeapDataContainer(vertices.size() * sizeof(Vertex)),
+      DataContainer::CreateHeapDataContainer(indices.size() *
+                                             sizeof(uint16_t)));
+  mesh.AddVertices(vertices.data(), vertices.size());
+  mesh.AddIndices(indices.data(), indices.size());
+  return mesh;
+}
+
 }  // namespace lull
 
-#endif  // LULLABY_UTIL_MESH_H_
+#endif  // LULLABY_UTIL_MESH_UTIL_H_

@@ -64,10 +64,20 @@ void DispatcherSystem::Create(Entity entity, HashValue type, const Def* def) {
   } else {
     LOG(DFATAL) << "EventResponseDef must have inputs and outputs defined.";
   }
-  queued_destruction_.erase(entity);
 }
 
-void DispatcherSystem::Destroy(Entity entity) { SafeDestroy(entity); }
+void DispatcherSystem::Destroy(Entity entity) {
+  connections_.erase(entity);
+  if (dispatch_count_ > 0) {
+    auto iter = dispatchers_.find(entity);
+    if (iter != dispatchers_.end()) {
+      iter->second.DisconnectAll(this);
+    }
+    queued_destruction_.insert(entity);
+  } else {
+    dispatchers_.erase(entity);
+  }
+}
 
 void DispatcherSystem::ConnectEvent(Entity entity, const EventDef* input,
                                     Dispatcher::EventHandler handler) {
@@ -104,6 +114,8 @@ void DispatcherSystem::SendImpl(Entity entity, const EventWrapper& event) {
 void DispatcherSystem::SendImmediatelyImpl(Entity entity,
                                            const EventWrapper& event) {
   ++dispatch_count_;
+  // When an entity has been queued for destruction, treat it as already
+  // destroyed.
   if (queued_destruction_.count(entity) == 0) {
     auto iter = dispatchers_.find(entity);
     if (iter != dispatchers_.end()) {
@@ -139,7 +151,7 @@ void DispatcherSystem::Disconnect(Entity entity, TypeId type,
   Dispatcher& dispatcher = iter->second;
   dispatcher.Disconnect(type, owner);
   if (dispatcher.GetHandlerCount() == 0) {
-    SafeDestroy(entity);
+    Destroy(entity);
   }
 }
 
@@ -158,19 +170,6 @@ size_t DispatcherSystem::GetHandlerCount(Entity entity, TypeId type) const {
 
 size_t DispatcherSystem::GetUniversalHandlerCount() const {
   return universal_dispatcher_.GetHandlerCount();
-}
-
-void DispatcherSystem::SafeDestroy(Entity entity) {
-  connections_.erase(entity);
-  if (dispatch_count_ > 0) {
-    auto iter = dispatchers_.find(entity);
-    if (iter != dispatchers_.end()) {
-      iter->second.DisconnectAll(this);
-    }
-    queued_destruction_.insert(entity);
-  } else {
-    dispatchers_.erase(entity);
-  }
 }
 
 void DispatcherSystem::DestroyQueued() {

@@ -141,7 +141,7 @@ void RenderSystem::ProcessTasks() { impl_->ProcessTasks(); }
 void RenderSystem::WaitForAssetsToLoad() { impl_->WaitForAssetsToLoad(); }
 
 RenderPass RenderSystem::GetRenderPass(Entity entity) const {
-  return impl_->GetRenderPass(entity);
+  return (RenderPass)impl_->GetRenderPass(entity);
 }
 
 const mathfu::vec4& RenderSystem::GetDefaultColor(Entity entity) const {
@@ -234,6 +234,10 @@ const std::vector<LinkTag>* RenderSystem::GetLinkTags(Entity e) const {
   return impl_->GetLinkTags(e);
 }
 
+bool RenderSystem::GetQuad(Entity e, Quad* quad) const {
+  return impl_->GetQuad(e, quad);
+}
+
 void RenderSystem::SetQuad(Entity e, const Quad& quad) {
   impl_->SetQuad(e, quad);
 }
@@ -245,10 +249,6 @@ void RenderSystem::SetMesh(Entity e, const TriangleMesh<VertexPT>& mesh) {
 void RenderSystem::SetAndDeformMesh(Entity entity,
     const TriangleMesh<VertexPT>& mesh) {
   impl_->SetAndDeformMesh(entity, mesh);
-}
-
-void RenderSystem::SetMesh(Entity e, const HeapDynamicMesh& mesh) {
-  impl_->SetMesh(e, mesh);
 }
 
 void RenderSystem::SetMesh(Entity e, const MeshData& mesh) {
@@ -298,6 +298,10 @@ bool RenderSystem::IsTextureSet(Entity e, int unit) const {
 
 bool RenderSystem::IsTextureLoaded(Entity e, int unit) const {
   return impl_->IsTextureLoaded(e, unit);
+}
+
+bool RenderSystem::IsTextureLoaded(const TexturePtr& texture) const {
+  return impl_->IsTextureLoaded(texture);
 }
 
 bool RenderSystem::IsReadyToRender(Entity entity) const {

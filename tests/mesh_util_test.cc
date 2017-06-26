@@ -17,8 +17,9 @@ limitations under the License.
 #include "gtest/gtest.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
-#include "lullaby/util/mesh.h"
+#include "lullaby/util/mesh_util.h"
 #include "lullaby/util/vertex.h"
+#include "lullaby/generated/tests/mathfu_matchers.h"
 #include "lullaby/generated/tests/portable_test_macros.h"
 
 namespace lull {
@@ -27,6 +28,8 @@ namespace {
 constexpr float kEpsilon = 1.0E-5f;
 
 using DeformFn = std::function<mathfu::vec3(const mathfu::vec3&)>;
+
+using testing::NearMathfu;
 
 template <typename T>
 void ApplyDeformationToList(DeformFn deform, std::vector<T>* list) {
@@ -87,9 +90,9 @@ TEST(TesselatedQuadDeathTest, SanityChecks) {
   constexpr const char* kNegativeCornerVertsMessage =
       "Must have >= 0 corner vertices.";
   PORT_EXPECT_DEBUG_DEATH(CalculateTesselatedQuadIndices(
-                             /* num_verts_x = */ 2, /* num_verts_y = */ 2,
-                             /* corner_verts = */ -2),
-                         kNegativeCornerVertsMessage);
+                              /* num_verts_x = */ 2, /* num_verts_y = */ 2,
+                              /* corner_verts = */ -2),
+                          kNegativeCornerVertsMessage);
   PORT_EXPECT_DEBUG_DEATH(
       CalculateTesselatedQuadVertices<VertexPT>(
           /* size_x = */ 1, /* size_y = */ 1, /* num_verts_x = */ 2,
@@ -299,6 +302,43 @@ TEST(TesselatedQuad, VertexIndexCountsRoundCorners) {
                 (kIndicesPerTriangle * kCornersPerQuad * (corner_verts + 1)));
 }
 
+TEST(TessellatedQuad, CreateQuadMesh) {
+  constexpr float kSizeX = 2.0f;
+  constexpr float kSizeY = 1.5f;
+  constexpr float kCornerRadius = 0.2f;
+  constexpr int kNumVertsX = 5;
+  constexpr int kNumVertsY = 7;
+  constexpr int kNumCornerVerts = 5;
+  const std::vector<VertexPT> vertices =
+      CalculateTesselatedQuadVertices<VertexPT>(kSizeX, kSizeY, kNumVertsX,
+                                                kNumVertsY, kCornerRadius,
+                                                kNumCornerVerts);
+  const std::vector<uint16_t> indices =
+      CalculateTesselatedQuadIndices(kNumVertsX, kNumVertsY, kNumCornerVerts);
+
+  MeshData mesh = CreateQuadMesh<VertexPT>(
+      kSizeX, kSizeY, kNumVertsX, kNumVertsY, kCornerRadius, kNumCornerVerts);
+  EXPECT_EQ(mesh.GetVertexFormat(), VertexPT::kFormat);
+  EXPECT_EQ(mesh.GetNumVertices(), vertices.size());
+  EXPECT_EQ(mesh.GetNumIndices(), indices.size());
+
+  const VertexPT* vertex_data = mesh.GetMutableVertexData<VertexPT>();
+  ASSERT_TRUE(vertex_data != nullptr);
+  for (size_t i = 0; i < vertices.size(); ++i) {
+    EXPECT_EQ(vertex_data[i].x, vertices[i].x);
+    EXPECT_EQ(vertex_data[i].y, vertices[i].y);
+    EXPECT_EQ(vertex_data[i].z, vertices[i].z);
+    EXPECT_EQ(vertex_data[i].u0, vertices[i].u0);
+    EXPECT_EQ(vertex_data[i].v0, vertices[i].v0);
+  }
+
+  const MeshData::Index* index_data = mesh.GetIndexData();
+  ASSERT_TRUE(index_data != nullptr);
+  for (size_t i = 0; i < indices.size(); ++i) {
+    EXPECT_EQ(index_data[i], indices[i]);
+  }
+}
+
 TEST(Deformation, Basic) {
   auto deform = [](const mathfu::vec3& pos) { return -2.0f * pos; };
 
@@ -319,6 +359,61 @@ TEST(Deformation, ExtraDataUntouched) {
   ApplyDeformationToList(deform, &list);
   EXPECT_EQ(list[0], mathfu::vec4(-2, -4, -6, 4));
   EXPECT_EQ(list[1], mathfu::vec4(-10, -12, -14, 8));
+}
+
+TEST(ApplyDeformation, MeshData) {
+  VertexPT vertices[] = {
+      VertexPT(1.0f, 2.0f, 3.0f, 0.1f, 0.2f),
+      VertexPT(4.0f, 5.0f, 6.0f, 0.3f, 0.4f),
+      VertexPT(7.0f, 8.0f, 9.0f, 0.5f, 0.6f),
+  };
+  DataContainer vertex_data(
+      DataContainer::DataPtr(reinterpret_cast<uint8_t*>(vertices),
+                             [](const uint8_t*) {}),
+      sizeof(vertices), sizeof(vertices), DataContainer::kAll);
+
+  MeshData mesh(MeshData::kPoints, VertexPT::kFormat, std::move(vertex_data),
+                DataContainer());
+
+  auto list_deform = [](float* data, size_t count, size_t stride) {
+    auto pos_deform = [](const mathfu::vec3& pos) { return -2.0f * pos; };
+    ApplyDeformation(data, count, stride, pos_deform);
+  };
+
+  ApplyDeformationToMesh(&mesh, list_deform);
+  EXPECT_THAT(GetPosition(vertices[0]),
+              NearMathfu(mathfu::vec3(-2.0f, -4.0f, -6.0f), kEpsilon));
+  EXPECT_THAT(GetPosition(vertices[1]),
+              NearMathfu(mathfu::vec3(-8.0f, -10.0f, -12.0f), kEpsilon));
+  EXPECT_THAT(GetPosition(vertices[2]),
+              NearMathfu(mathfu::vec3(-14.0f, -16.0f, -18.0f), kEpsilon));
+
+  EXPECT_EQ(vertices[0].u0, 0.1f);
+  EXPECT_EQ(vertices[0].v0, 0.2f);
+  EXPECT_EQ(vertices[1].u0, 0.3f);
+  EXPECT_EQ(vertices[1].v0, 0.4f);
+  EXPECT_EQ(vertices[2].u0, 0.5f);
+  EXPECT_EQ(vertices[2].v0, 0.6f);
+}
+
+TEST(ApplyDeformationDeathTest, MeshDataWithInsufficientAccess) {
+  auto deform = [](float* data, size_t count, size_t stride) { CHECK(false); };
+
+  uint8_t data_buf[8] = {0};
+  DataContainer unreadable_data(
+      DataContainer::DataPtr(data_buf, [](const uint8_t*) {}), sizeof(data_buf),
+      sizeof(data_buf), DataContainer::kWrite);
+  MeshData unreadable_mesh(MeshData::kPoints, VertexP::kFormat,
+                           std::move(unreadable_data), DataContainer());
+  PORT_EXPECT_DEBUG_DEATH(ApplyDeformationToMesh(&unreadable_mesh, deform), "");
+
+  DataContainer unwriteable_data(
+      DataContainer::DataPtr(data_buf, [](const uint8_t*) {}), sizeof(data_buf),
+      sizeof(data_buf), DataContainer::kRead);
+  MeshData unwriteable_mesh(MeshData::kPoints, VertexP::kFormat,
+                            std::move(unwriteable_data), DataContainer());
+  PORT_EXPECT_DEBUG_DEATH(ApplyDeformationToMesh(&unwriteable_mesh, deform),
+                          "");
 }
 
 }  // namespace
