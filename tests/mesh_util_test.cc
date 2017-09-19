@@ -17,10 +17,10 @@ limitations under the License.
 #include "gtest/gtest.h"
 #include "mathfu/constants.h"
 #include "mathfu/glsl_mappings.h"
-#include "lullaby/util/mesh_util.h"
-#include "lullaby/util/vertex.h"
-#include "lullaby/generated/tests/mathfu_matchers.h"
-#include "lullaby/generated/tests/portable_test_macros.h"
+#include "lullaby/modules/render/mesh_util.h"
+#include "lullaby/modules/render/vertex.h"
+#include "lullaby/tests/mathfu_matchers.h"
+#include "lullaby/tests/portable_test_macros.h"
 
 namespace lull {
 namespace {
@@ -117,7 +117,7 @@ TEST(TesselatedQuad, CheckVerticesNoCorners) {
   const int verts_x = 5;
   const int verts_y = 7;
 
-  const auto vertices = CalculateTesselatedQuadVertices<VertexPT>(
+  const auto vertices = CalculateTesselatedQuadVertices<VertexPTN>(
       size_x, size_y, verts_x, verts_y, 0.f, 0);
 
   EXPECT_EQ(static_cast<int>(vertices.size()), verts_x * verts_y);
@@ -127,25 +127,50 @@ TEST(TesselatedQuad, CheckVerticesNoCorners) {
   const int top_right_ind = (verts_x)*verts_y - 1;
   const int bottom_right_ind = (verts_x - 1) * verts_y;
 
-  const mathfu::vec3 bottom_left = GetPosition(vertices[bottom_left_ind]);
-  const mathfu::vec3 top_left = GetPosition(vertices[top_left_ind]);
-  const mathfu::vec3 top_right = GetPosition(vertices[top_right_ind]);
-  const mathfu::vec3 bottom_right = GetPosition(vertices[bottom_right_ind]);
+  {
+    // Check positions.
+    const mathfu::vec3 bottom_left = GetPosition(vertices[bottom_left_ind]);
+    const mathfu::vec3 top_left = GetPosition(vertices[top_left_ind]);
+    const mathfu::vec3 top_right = GetPosition(vertices[top_right_ind]);
+    const mathfu::vec3 bottom_right = GetPosition(vertices[bottom_right_ind]);
 
-  EXPECT_NEAR(bottom_left.x, -size_x / 2.f, kEpsilon);
-  EXPECT_NEAR(top_left.x, -size_x / 2.f, kEpsilon);
-  EXPECT_NEAR(top_right.x, size_x / 2.f, kEpsilon);
-  EXPECT_NEAR(bottom_right.x, size_x / 2.f, kEpsilon);
+    EXPECT_NEAR(bottom_left.x, -size_x / 2.f, kEpsilon);
+    EXPECT_NEAR(top_left.x, -size_x / 2.f, kEpsilon);
+    EXPECT_NEAR(top_right.x, size_x / 2.f, kEpsilon);
+    EXPECT_NEAR(bottom_right.x, size_x / 2.f, kEpsilon);
 
-  EXPECT_NEAR(bottom_left.y, -size_y / 2.f, kEpsilon);
-  EXPECT_NEAR(top_left.y, size_y / 2.f, kEpsilon);
-  EXPECT_NEAR(top_right.y, size_y / 2.f, kEpsilon);
-  EXPECT_NEAR(bottom_right.y, -size_y / 2.f, kEpsilon);
+    EXPECT_NEAR(bottom_left.y, -size_y / 2.f, kEpsilon);
+    EXPECT_NEAR(top_left.y, size_y / 2.f, kEpsilon);
+    EXPECT_NEAR(top_right.y, size_y / 2.f, kEpsilon);
+    EXPECT_NEAR(bottom_right.y, -size_y / 2.f, kEpsilon);
 
-  EXPECT_NEAR(bottom_left.z, 0, kEpsilon);
-  EXPECT_NEAR(top_left.z, 0, kEpsilon);
-  EXPECT_NEAR(top_right.z, 0, kEpsilon);
-  EXPECT_NEAR(bottom_right.z, 0, kEpsilon);
+    EXPECT_NEAR(bottom_left.z, 0, kEpsilon);
+    EXPECT_NEAR(top_left.z, 0, kEpsilon);
+    EXPECT_NEAR(top_right.z, 0, kEpsilon);
+    EXPECT_NEAR(bottom_right.z, 0, kEpsilon);
+  }
+  {
+    // Check normals.
+    const mathfu::vec3 bottom_left = GetNormal(vertices[bottom_left_ind]);
+    const mathfu::vec3 top_left = GetNormal(vertices[top_left_ind]);
+    const mathfu::vec3 top_right = GetNormal(vertices[top_right_ind]);
+    const mathfu::vec3 bottom_right = GetNormal(vertices[bottom_right_ind]);
+
+    EXPECT_NEAR(bottom_left.x, 0.0f, kEpsilon);
+    EXPECT_NEAR(top_left.x, 0.0f, kEpsilon);
+    EXPECT_NEAR(top_right.x, 0.0f, kEpsilon);
+    EXPECT_NEAR(bottom_right.x, 0.0f, kEpsilon);
+
+    EXPECT_NEAR(bottom_left.y, 0.0f, kEpsilon);
+    EXPECT_NEAR(top_left.y, 0.0f, kEpsilon);
+    EXPECT_NEAR(top_right.y, 0.0f, kEpsilon);
+    EXPECT_NEAR(bottom_right.y, 0.0f, kEpsilon);
+
+    EXPECT_NEAR(bottom_left.z, 1.0f, kEpsilon);
+    EXPECT_NEAR(top_left.z, 1.0f, kEpsilon);
+    EXPECT_NEAR(top_right.z, 1.0f, kEpsilon);
+    EXPECT_NEAR(bottom_right.z, 1.0f, kEpsilon);
+  }
 }
 
 TEST(TesselatedQuad, CheckIndicesNoCorners) {
@@ -309,25 +334,28 @@ TEST(TessellatedQuad, CreateQuadMesh) {
   constexpr int kNumVertsX = 5;
   constexpr int kNumVertsY = 7;
   constexpr int kNumCornerVerts = 5;
-  const std::vector<VertexPT> vertices =
-      CalculateTesselatedQuadVertices<VertexPT>(kSizeX, kSizeY, kNumVertsX,
-                                                kNumVertsY, kCornerRadius,
-                                                kNumCornerVerts);
+  const std::vector<VertexPTN> vertices =
+      CalculateTesselatedQuadVertices<VertexPTN>(kSizeX, kSizeY, kNumVertsX,
+                                                 kNumVertsY, kCornerRadius,
+                                                 kNumCornerVerts);
   const std::vector<uint16_t> indices =
       CalculateTesselatedQuadIndices(kNumVertsX, kNumVertsY, kNumCornerVerts);
 
-  MeshData mesh = CreateQuadMesh<VertexPT>(
+  MeshData mesh = CreateQuadMesh<VertexPTN>(
       kSizeX, kSizeY, kNumVertsX, kNumVertsY, kCornerRadius, kNumCornerVerts);
-  EXPECT_EQ(mesh.GetVertexFormat(), VertexPT::kFormat);
+  EXPECT_EQ(mesh.GetVertexFormat(), VertexPTN::kFormat);
   EXPECT_EQ(mesh.GetNumVertices(), vertices.size());
   EXPECT_EQ(mesh.GetNumIndices(), indices.size());
 
-  const VertexPT* vertex_data = mesh.GetMutableVertexData<VertexPT>();
+  const VertexPTN* vertex_data = mesh.GetMutableVertexData<VertexPTN>();
   ASSERT_TRUE(vertex_data != nullptr);
   for (size_t i = 0; i < vertices.size(); ++i) {
     EXPECT_EQ(vertex_data[i].x, vertices[i].x);
     EXPECT_EQ(vertex_data[i].y, vertices[i].y);
     EXPECT_EQ(vertex_data[i].z, vertices[i].z);
+    EXPECT_EQ(vertex_data[i].nx, vertices[i].nx);
+    EXPECT_EQ(vertex_data[i].ny, vertices[i].ny);
+    EXPECT_EQ(vertex_data[i].nz, vertices[i].nz);
     EXPECT_EQ(vertex_data[i].u0, vertices[i].u0);
     EXPECT_EQ(vertex_data[i].v0, vertices[i].v0);
   }
@@ -414,6 +442,100 @@ TEST(ApplyDeformationDeathTest, MeshDataWithInsufficientAccess) {
                             std::move(unwriteable_data), DataContainer());
   PORT_EXPECT_DEBUG_DEATH(ApplyDeformationToMesh(&unwriteable_mesh, deform),
                           "");
+}
+
+TEST(CreateLatLonSphereDeathTest, CatchesBadArguments) {
+  const float radius = 1.0f;
+  EXPECT_DEATH(CreateLatLonSphere(radius, /* num_parallels = */ 0,
+                                  /* num_meridians = */ 3),
+               "");
+  EXPECT_DEATH(CreateLatLonSphere(radius, /* num_parallels = */ 1,
+                                  /* num_meridians = */ 2),
+               "");
+  PORT_EXPECT_DEBUG_DEATH(CreateLatLonSphere(radius, /* num_parallels = */ 1000,
+                                             /* num_meridians = */ 1000),
+                          "Exceeded vertex limit");
+}
+
+TEST(CreateLatLonSphereTest, GeneratesCorrectNumbersOfVerticesAndIndices) {
+  const float radius = 1.0f;
+  MeshData mesh = CreateLatLonSphere(radius, /* num_parallels = */ 1,
+                                     /* num_meridians = */ 3);
+  EXPECT_EQ(mesh.GetPrimitiveType(), MeshData::kTriangles);
+  EXPECT_EQ(mesh.GetNumVertices(), 5U);
+  EXPECT_EQ(mesh.GetNumIndices(), 3U * 6U);
+
+  mesh = CreateLatLonSphere(radius, /* num_parallels = */ 1,
+                            /* num_meridians = */ 7);
+  EXPECT_EQ(mesh.GetPrimitiveType(), MeshData::kTriangles);
+  EXPECT_EQ(mesh.GetNumVertices(), 9U);
+  EXPECT_EQ(mesh.GetNumIndices(), 3U * 14U);
+
+  mesh = CreateLatLonSphere(radius, /* num_parallels = */ 5,
+                            /* num_meridians = */ 3);
+  EXPECT_EQ(mesh.GetPrimitiveType(), MeshData::kTriangles);
+  EXPECT_EQ(mesh.GetNumVertices(), 17U);
+  EXPECT_EQ(mesh.GetNumIndices(), 3U * (6U + 24U));
+}
+
+TEST(CreateLatLonSphereTest, GeneratesPositionsThatHaveRadiusLength) {
+  float radius = 2.5f;
+  MeshData mesh = CreateLatLonSphere(radius, /* num_parallels = */ 3,
+                                     /* num_meridians = */ 5);
+  for (int i = 0; i < mesh.GetNumVertices(); ++i) {
+    const VertexPT& v = mesh.GetVertexData<VertexPT>()[i];
+    EXPECT_NEAR(GetPosition(v).Length(), radius, kDefaultEpsilon);
+  }
+
+  radius = 8.3f;
+  mesh = CreateLatLonSphere(radius, /* num_parallels = */ 4,
+                            /* num_meridians = */ 4);
+  for (int i = 0; i < mesh.GetNumVertices(); ++i) {
+    const VertexPT& v = mesh.GetVertexData<VertexPT>()[i];
+    EXPECT_NEAR(GetPosition(v).Length(), radius, kDefaultEpsilon);
+  }
+}
+
+TEST(CreateLatLonSphereTest,
+     GeneratesExternallyFacingTrianglesWhenGivenAPositiveRadius) {
+  MeshData mesh =
+      CreateLatLonSphere(/* radius = */ 1.0f, /* num_parallels = */ 1,
+                         /* num_meridians = */ 3);
+  EXPECT_EQ(mesh.GetPrimitiveType(), MeshData::kTriangles);
+  for (size_t i = 0; i < mesh.GetNumIndices(); i += 3) {
+    const VertexPT* vertices = mesh.GetVertexData<VertexPT>();
+    const mathfu::vec3 p0 = GetPosition(vertices[mesh.GetIndexData()[i + 0]]);
+    const mathfu::vec3 p1 = GetPosition(vertices[mesh.GetIndexData()[i + 1]]);
+    const mathfu::vec3 p2 = GetPosition(vertices[mesh.GetIndexData()[i + 2]]);
+    const mathfu::vec3 d1 = p1 - p0;
+    const mathfu::vec3 d2 = p2 - p0;
+    EXPECT_THAT(d1, Not(NearMathfu(d2, kEpsilon)));
+    const mathfu::vec3 normal = mathfu::vec3::CrossProduct(d1, d2).Normalized();
+    EXPECT_GT(mathfu::vec3::DotProduct(p0, normal), 0.0f);
+    EXPECT_GT(mathfu::vec3::DotProduct(p1, normal), 0.0f);
+    EXPECT_GT(mathfu::vec3::DotProduct(p2, normal), 0.0f);
+  }
+}
+
+TEST(CreateLatLonSphereTest,
+     GeneratesInternallyFacingTrianglesWhenGivenANegativeRadius) {
+  MeshData mesh =
+      CreateLatLonSphere(/* radius = */ -1.0f, /* num_parallels = */ 1,
+                         /* num_meridians = */ 3);
+  EXPECT_EQ(mesh.GetPrimitiveType(), MeshData::kTriangles);
+  for (size_t i = 0; i < mesh.GetNumIndices(); i += 3) {
+    const VertexPT* vertices = mesh.GetVertexData<VertexPT>();
+    const mathfu::vec3 p0 = GetPosition(vertices[mesh.GetIndexData()[i + 0]]);
+    const mathfu::vec3 p1 = GetPosition(vertices[mesh.GetIndexData()[i + 1]]);
+    const mathfu::vec3 p2 = GetPosition(vertices[mesh.GetIndexData()[i + 2]]);
+    const mathfu::vec3 d1 = p1 - p0;
+    const mathfu::vec3 d2 = p2 - p0;
+    EXPECT_THAT(d1, Not(NearMathfu(d2, kEpsilon)));
+    const mathfu::vec3 normal = mathfu::vec3::CrossProduct(d1, d2).Normalized();
+    EXPECT_LT(mathfu::vec3::DotProduct(p0, normal), 0.0f);
+    EXPECT_LT(mathfu::vec3::DotProduct(p1, normal), 0.0f);
+    EXPECT_LT(mathfu::vec3::DotProduct(p2, normal), 0.0f);
+  }
 }
 
 }  // namespace

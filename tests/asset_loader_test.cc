@@ -17,8 +17,8 @@ limitations under the License.
 #include <chrono>
 
 #include "gtest/gtest.h"
-#include "lullaby/base/asset_loader.h"
-#include "lullaby/generated/tests/portable_test_macros.h"
+#include "lullaby/modules/file/asset_loader.h"
+#include "lullaby/tests/portable_test_macros.h"
 
 namespace lull {
 namespace {
@@ -30,12 +30,12 @@ struct TestAsset : public Asset {
     callbacks.push_back(kSetFilename);
   }
 
-  void OnLoad(std::string* data) override {
+  void OnLoad(const std::string& filename, std::string* data) override {
     on_load_data = *data;
     callbacks.push_back(kOnLoad);
   }
 
-  void OnFinalize(std::string* data) override {
+  void OnFinalize(const std::string& filename, std::string* data) override {
     on_final_data = *data;
     callbacks.push_back(kOnFinalize);
   }

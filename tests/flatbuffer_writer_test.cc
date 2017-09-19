@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "lullaby/util/flatbuffer_writer.h"
+#include "lullaby/modules/flatbuffers/flatbuffer_writer.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "flatbuffers/flatbuffers.h"
 #include "flatbuffers/util.h"
-#include "lullaby/generated/scripts/flatc_generated.h"
-#include "lullaby/base/typeid.h"
 #include "lullaby/util/math.h"
+#include "lullaby/util/typeid.h"
+#include "lullaby/generated/tools/flatc_generated.h"
 
 namespace lull {
 namespace {

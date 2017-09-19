@@ -60,19 +60,36 @@ table AnimInstanceDef {
   /// desired ending value of the animation specific to the Entity.  (The ending
   /// value will be equal to (offset + multiplier).
   multiplier: [float];
+
+  /// Time (in seconds) to blend from the previous animation.
+  blend_time: float;
 }
 
 /// Specifies how to drive the data for an animation channel towards target
 /// values over the specified amount of time.
 table AnimTargetDef {
   /// The AnimationChannel on which to set these targets.
-  channel : string;
+  channel: string;
 
   /// The target values for the channel.
-  values : [float];
+  values: [float];
 
   /// The amount of time (in milliseconds) to take to reach the target values.
-  time_ms : int;
+  time_ms: int;
+
+  /// The amount of time (in milliseconds) to delay starting the animation.
+  start_delay_ms: int = 0;
+}
+
+/// Specifies a "defining animation" that is used to correctly initialize
+/// animation channels which will be playing an animation from a set of related
+/// animations.
+table DefiningAnimDef {
+  /// The file containing the "defining animation".
+  filename: string;
+
+  /// The channel associated with the "defining animation".
+  channel: string;
 }
 
 /// Defines a set of animations or targets to play on an Entity.
@@ -82,4 +99,11 @@ table AnimationDef {
   on_complete_events: [EventDef];
   on_success_events: [EventDef];
   on_cancelled_events: [EventDef];
+
+  /// The defining animation is contains the entire skeleton of the animation.
+  /// Specifically, it ensures that the animation channel is initialized such
+  /// that it will be able to animate any animation using the same skeleton,
+  /// regardless of if the animation itself animates all the bones.  The term
+  /// "defining animation" comes from the motive library and can be generated
+  defining_animation: DefiningAnimDef;
 }

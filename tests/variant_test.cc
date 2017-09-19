@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "lullaby/base/variant.h"
+#include "lullaby/util/variant.h"
 #include "gtest/gtest.h"
-#include "lullaby/base/serialize.h"
-#include "lullaby/base/variant_serializer.h"
+#include "lullaby/modules/serialize/serialize.h"
+#include "lullaby/modules/serialize/variant_serializer.h"
 #include "lullaby/util/logging.h"
-#include "lullaby/generated/tests/portable_test_macros.h"
+#include "lullaby/tests/portable_test_macros.h"
 
 namespace lull {
 namespace {
@@ -92,11 +92,15 @@ TEST(Variant, Basics) {
   EXPECT_FALSE(var.Empty());
   EXPECT_EQ(1, *var.Get<int>());
   EXPECT_EQ(nullptr, var.Get<float>());
+  EXPECT_EQ(1, var.ValueOr(0));
+  EXPECT_EQ(0.f, var.ValueOr(0.f));
 
   var = 2.f;
   EXPECT_FALSE(var.Empty());
   EXPECT_EQ(nullptr, var.Get<int>());
   EXPECT_EQ(2.f, *var.Get<float>());
+  EXPECT_EQ(0, var.ValueOr(0));
+  EXPECT_EQ(2.f, var.ValueOr(0.f));
 
   var.Clear();
   EXPECT_TRUE(var.Empty());

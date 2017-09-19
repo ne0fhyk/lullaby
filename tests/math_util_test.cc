@@ -14,13 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "ion/math/matrixutils.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "mathfu/io.h"
 #include "lullaby/util/math.h"
-#include "lullaby/generated/tests/mathfu_matchers.h"
-#include "lullaby/generated/tests/portable_test_macros.h"
+#include "lullaby/tests/mathfu_matchers.h"
+#include "lullaby/tests/portable_test_macros.h"
 
 namespace lull {
 namespace {
@@ -1030,6 +1029,20 @@ TEST(IsNearlyZero, Simple) {
   EXPECT_FALSE(IsNearlyZero(.0001f, .00001f));
 }
 
+TEST(AreNearlyEqual, Quaternion) {
+  const mathfu::quat positive = mathfu::quat::FromEulerAngles(mathfu::kOnes3f);
+  EXPECT_TRUE(AreNearlyEqual(positive, positive));
+  EXPECT_FALSE(AreNearlyEqual(positive, mathfu::quat::identity));
+
+  const mathfu::quat negative =
+      mathfu::quat(-positive.scalar(), -1.f * positive.vector());
+  EXPECT_TRUE(AreNearlyEqual(positive, negative));
+
+  const mathfu::quat offset =
+      mathfu::quat(positive.scalar() + 0.1f, positive.vector()).Normalized();
+  EXPECT_FALSE(AreNearlyEqual(positive, offset));
+}
+
 TEST(GetMatrixColumn3D, Simple) {
   const mathfu::mat4 m = mathfu::mat4::Identity();
 
@@ -1174,20 +1187,17 @@ TEST(CalculateDeterminant3x3, Simple) {
   const int kNumValues = sizeof(kValues) / sizeof(kValues[0]);
   const int kMatrixDimension = 3;
   const int kMatrixSize = kMatrixDimension * kMatrixDimension;
-  // Test the 3x3 determinants by comparing them against the determinants of
-  // 3x3 Ion matrices.
-  ion::math::Matrix3f ion_matrix = ion::math::Matrix3f::Identity();
   mathfu::mat4 mathfu_matrix = mathfu::mat4::Identity();
+  const int determinants[3] = {-32, -425, -51};
   for (int i = 0; i < kNumValues; ++i) {
     for (int k = 0; k < kMatrixSize; ++k) {
       const float value = kValues[(i + k) % kMatrixSize];
       const int row = k / kMatrixDimension;
       const int col = k % kMatrixDimension;
-      ion_matrix(row, col) = value;
       mathfu_matrix(row, col) = value;
     }
-    EXPECT_NEAR(ion::math::Determinant(ion_matrix),
-                CalculateDeterminant3x3(mathfu_matrix), kEpsilon);
+    EXPECT_NEAR(determinants[i % 3], CalculateDeterminant3x3(mathfu_matrix),
+                kEpsilon);
   }
 }
 
@@ -1697,6 +1707,50 @@ TEST(FindPositionBetweenPoints, Simple) {
   FindPositionBetweenPoints(1, points, &min_index, &max_index, &match_percent);
   EXPECT_EQ((int)min_index, 2);
   EXPECT_EQ((int)max_index, 3);
+  EXPECT_NEAR(match_percent, 1.f, kEpsilon);
+}
+
+TEST(FindPositionBetweenPoints, Overlapping) {
+  const std::vector<float> points_1{-2, -1, -1, 1, 2};
+  const std::vector<float> points_2{-2, -2, 0, 1, 2};
+  size_t min_index;
+  size_t max_index;
+  float match_percent;
+
+  // Test that overlapping points doesn't crash
+  FindPositionBetweenPoints(-1, points_1, &min_index, &max_index,
+                            &match_percent);
+  EXPECT_EQ((int)min_index, 0);
+  EXPECT_EQ((int)max_index, 1);
+  EXPECT_NEAR(match_percent, 1.f, kEpsilon);
+  FindPositionBetweenPoints(-2, points_2, &min_index, &max_index,
+                            &match_percent);
+  EXPECT_EQ((int)min_index, 0);
+  EXPECT_EQ((int)max_index, 0);
+  EXPECT_NEAR(match_percent, 1.f, kEpsilon);
+}
+
+TEST(FindPositionBetweenPoints, Single) {
+  const std::vector<float> points{1};
+  size_t min_index;
+  size_t max_index;
+  float match_percent;
+
+  // Test that only having 1 point doesn't crash
+  FindPositionBetweenPoints(-1, points, &min_index, &max_index,
+                            &match_percent);
+  EXPECT_EQ((int)min_index, 0);
+  EXPECT_EQ((int)max_index, 0);
+  EXPECT_NEAR(match_percent, 1.f, kEpsilon);
+  FindPositionBetweenPoints(1, points, &min_index, &max_index,
+                            &match_percent);
+  EXPECT_EQ((int)min_index, 0);
+  EXPECT_EQ((int)max_index, 0);
+  EXPECT_NEAR(match_percent, 1.f, kEpsilon);
+  FindPositionBetweenPoints(2, points, &min_index, &max_index,
+                            &match_percent);
+  EXPECT_EQ((int)min_index, 0);
+  EXPECT_EQ((int)max_index, 0);
   EXPECT_NEAR(match_percent, 1.f, kEpsilon);
 }
 

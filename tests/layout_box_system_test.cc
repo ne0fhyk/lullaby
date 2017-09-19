@@ -17,11 +17,11 @@ limitations under the License.
 #include "lullaby/systems/layout/layout_box_system.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
-#include "lullaby/base/asset_loader.h"
-#include "lullaby/base/entity_factory.h"
-#include "lullaby/base/queued_dispatcher.h"
+#include "lullaby/modules/dispatcher/queued_dispatcher.h"
+#include "lullaby/modules/ecs/entity_factory.h"
+#include "lullaby/modules/file/asset_loader.h"
 #include "lullaby/systems/transform/transform_system.h"
-#include "lullaby/generated/tests/mathfu_matchers.h"
+#include "lullaby/tests/mathfu_matchers.h"
 #include "lullaby/generated/transform_def_generated.h"
 
 namespace lull {
@@ -202,6 +202,33 @@ TEST_F(LayoutBoxSystemTest, NoSetOnlyTransformAabb) {
   int count;
   for (f = 1.f, count = 1; f < 5.f; ++f, ++count) {
     changed = false;
+    transform_system_->SetAabb(e, Aabb({-f, -f, 0.f}, {f, f, 0.f}));
+
+    EXPECT_EQ(false, changed);
+    dispatcher_->Dispatch();
+    EXPECT_EQ(false, changed);
+
+    AssertAabbEq(layout_box_system_->GetOriginalBox(e),
+                 Aabb({-f, -f, 0.f}, {f, f, 0.f}));
+    AssertAabbEq(layout_box_system_->GetActualBox(e),
+                 Aabb({-f, -f, 0.f}, {f, f, 0.f}));
+  }
+}
+
+// If we set desired_size only, the System will default to reading from
+// transform's aabb for OriginalBox and AcutalBox.
+TEST_F(LayoutBoxSystemTest, SetDesiredAndTransformAabb) {
+  Entity e = CreateEntity();
+  bool changed = false;
+  Entity source = kNullEntity;
+  ConnectOriginalBoxChangedListener(&changed);
+  ConnectActualBoxChangedListener(&changed, &source);
+
+  float f;
+  int count;
+  for (f = 1.f, count = 1; f < 5.f; ++f, ++count) {
+    changed = false;
+    layout_box_system_->SetDesiredSize(e, 123, 4.f, 5.f, 6.f);
     transform_system_->SetAabb(e, Aabb({-f, -f, 0.f}, {f, f, 0.f}));
 
     EXPECT_EQ(false, changed);

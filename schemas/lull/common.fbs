@@ -2,6 +2,7 @@ namespace lull;
 
 attribute "defaults_to_null";
 attribute "dynamic";
+attribute "hashvalue";
 
 struct Vec2 (native_type: "mathfu::vec2", native_default: "{0.f, 0.f}") {
   x: float;
@@ -128,7 +129,7 @@ enum LayoutVerticalAlignment : int {
 }
 
 /// Potential Input Devices (matches enum in
-/// vr/internal/lullaby/src/base/input_manager.h)
+/// third_party/lullaby/src/lullaby/base/input_manager.h)
 enum DeviceType : int {
   Hmd,
   Mouse,

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-#include "lullaby/base/unordered_vector_map.h"
+#include "lullaby/util/unordered_vector_map.h"
 #include "gtest/gtest.h"
 
 namespace lull {
@@ -32,7 +32,14 @@ struct TestKeyFn {
   }
 };
 
-using TestUnorderedVectorMap = UnorderedVectorMap<int, TestClass, TestKeyFn>;
+struct TestLookupHash {
+  size_t operator()(const int key) const {
+    return static_cast<size_t>(key + 1);
+  }
+};
+
+using TestUnorderedVectorMap =
+    UnorderedVectorMap<int, TestClass, TestKeyFn, TestLookupHash>;
 
 TEST(UnorderedVectorMap, Empty) {
   TestUnorderedVectorMap map(32);
